@@ -8,13 +8,26 @@ public class Fumador extends Proceso implements Runnable {
 	private volatile boolean fumadorSatisfecho=false;
 	private volatile int recursoIdentificado;
 	
-	// Espacio alojar los recursos tomados de la mesa
-	private volatile int[] recursosObtenidos = {-1,-1};
+	// Espacio para alojar los recursos tomados de la mesa
+	private volatile int[] recursosObtenidos = {-1,-1}; // -1 = vacío
 	
 	// Constructor
 	public Fumador(Util util, Mesa mesa, Semaphore semaforo, int IDrecurso) {
 		super(util, mesa, semaforo, IDrecurso);
 		System.out.println("Fumador con " + super.elementoIlimitado + " ilimitado creado.");
+	}
+	
+	/**
+	 * @author Kevin Sánchez
+	 * @summary El fumador revisa si hay recursos en la mesa y si estos son los que le faltan
+	 */
+	public boolean mesaConRecursos() {
+		if(mesa.recursosEnLaMEsa[0]!=-1 
+		&& mesa.recursosEnLaMEsa[1]!=-1 
+				&& mesa.recursosEnLaMEsa[0]!=this.IDrecurso 
+				&& mesa.recursosEnLaMEsa[1]!=this.IDrecurso)
+			return true;
+		else return false;
 	}
 
     /**
@@ -37,8 +50,8 @@ public class Fumador extends Proceso implements Runnable {
 		 * lo agarra (con lo cual mesa.recursosColocados[i] = -1)
 		 * y manda un mensaje.
 		 */
-	if(this.mesa.recursosColocados[i]!=this.IDrecurso && this.mesa.recursosColocados[i]!=-1) {
-		this.recursoIdentificado=this.mesa.recursosColocados[i];  
+	if(this.mesa.recursosEnLaMEsa[i]!=this.IDrecurso && this.mesa.recursosEnLaMEsa[i]!=-1) {
+		this.recursoIdentificado=this.mesa.recursosEnLaMEsa[i];  
 		this.mesa.quitarRecurso(i);  // El recurso ya no está disponible en la mesa 
 			this.recursosObtenidos[i]=this.recursoIdentificado;
 		System.out.println("- El fumador con " + super.elementoIlimitado + 
@@ -50,7 +63,7 @@ public class Fumador extends Proceso implements Runnable {
     /**
 	* @author Kevin Sánchez
 	* @summary Método por el cual el fumador arma un cigarro y fuma si tiene los recursos necesarios.
-	* Si no los tiene, algo salió mal y el fumador estará enojado.
+	* Si no los tiene, algo salió mal.
 	*/
 	public void fumar() {
 		
@@ -65,7 +78,7 @@ public class Fumador extends Proceso implements Runnable {
             this.fumadorSatisfecho=true;
 	}
 		 /**
-		* else: Indica que al fumador le faltan recursos, y cual es el que agarró.
+		* else: Indica que al fumador le faltan recursos, y cual es el que agarró de la mesa.
 		*/ 
 		else
 			{
@@ -84,15 +97,11 @@ public class Fumador extends Proceso implements Runnable {
 	 * Los "sleep" simulan la tardanza en la ejecución.
 	 */
     public void run() {
-	
         try {
         	// Fumador adquiere el semáforo
-        	semaforo.acquire();    	       	
-    		if(mesa.estaVacia())
-    		{
-    		if(mesa.recursosColocados[0]!=this.IDrecurso && mesa.recursosColocados[1]!=this.IDrecurso)
-    		{
-        
+        	semaforo.acquire();
+        	
+        	 if(this.mesaConRecursos()) {
     		// Sin el semáforo, el método podría colapsar al sistema
     		tomarRecursos();
     		Thread.sleep(400);
@@ -101,15 +110,18 @@ public class Fumador extends Proceso implements Runnable {
     		fumar();
     		Thread.sleep(1994);
     		
+    		/**
+    		 * Último if: el fumador anuncia que dejó de fumar si ese es el caso,
+    		 * de lo contrario, estará enojado. 
+    		 * De igual manera el fumador termina de ejcutarse para no terminar el programa.
+    		 */
     		if(this.fumadorSatisfecho)
             System.out.println("- El fumador terminó de fumar.\n");    
     		else
                 System.out.println("- El fumador con " + super.recursos[this.IDrecurso] + " está encachimbado.\n");
-        	// Anuncia que dejó de fumar
-        	
-    		} // fin if
-    		} // fin if
+        	 } // fin if     	
         } // fin try
+
             catch (InterruptedException e) 
         {
             	ExceptionMensagge(e);
@@ -120,6 +132,4 @@ public class Fumador extends Proceso implements Runnable {
   	
         } // fin finally
     } // fin run
-	} // fin clase Fumador
-
-
+} // fin clase Fumador
