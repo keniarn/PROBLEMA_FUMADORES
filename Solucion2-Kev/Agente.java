@@ -1,100 +1,100 @@
 package Main;
-
 import java.util.concurrent.Semaphore;
-import java.util.Random;
+import java.util.Scanner;
 
-final class Agente extends Proceso implements Runnable {
-
-	 // De utilidad
-	 Random randomRecursoExcluido = new Random();
-	 Random randomrecurso1 = new Random();
-	 private volatile int recursoExcluido;
-	 private volatile int recurso1;
-	 private volatile int recurso2;
+public class Main {
 	
-	 // Constructor
-	public Agente(Util util, Mesa mesa, Semaphore semaforo) {
-		super(util, mesa, semaforo);
-		System.out.println("Agente creado");
-	}
-	
-	@Override
 	/**
-	 * @author Kevin Sánchez
-	 * @summary Corre el hilo: Genera recursos de forma aleatoria y los coloca en la mesa. 
-	 * Los "sleep" simulan la tardanza en la ejecución 
+	 * Inicio: Se crea un semáforo que solo permite que un hilo ejecute código a la vez 
 	 */
-    public void run() {
-		
-		/**
-		 * if: Si no hay recursos colocados y si no se han agotado las interacciones, procede:
-		 */
-		    // 
-        	if(!mesa.estaVacia() && util.get_contador()!=util.get_numInteracciones()+1)
-        	{
+    private static final Semaphore semaforo = new Semaphore(1); 
+	
+	/**
+	 * main: 
+	 * 1. Crea los objetos: fumador con tabaco, fumador con papel, 
+	 * fumador con fósforo, agente y mesa (de la simulación); 
+	 * y el objeto util, que será necesario. 
+	 */
+    public static void main(String[] args) {
+    	
+    	// De utilidad
+    	Util util = new Util();
+    	Scanner scanner = new Scanner(System.in);
+    	
+    	// Creación de objetos
+    	// El número le asignará a cada fumador el recurso ilimitado
+    	Mesa mesa = new Mesa();
+    	Agente agente = new Agente(util, mesa, semaforo);
+    	Fumador fumadorConTabaco = new Fumador(util, mesa, semaforo, 0);
+    	Fumador fumadorConPapel = new Fumador(util, mesa, semaforo, 1);
+    	Fumador fumadorConFosforo = new Fumador(util, mesa, semaforo, 2);
+    	
+    	/**
+    	 * 2. Pide al usuario, el número de interacciones, 
+         * que será la cantidad de veces que el agente ponga recursos en la mesa
+    	 */
+    	System.out.println("\nCuántas interacciones desea realizar?\n");
+    	int interacciones = scanner.nextInt();
+    	util.set_numInteracciones(interacciones);
+    	scanner.close();
+    	
+    	/**
+    	 * @author Kenia Romero
+    	 * @summary Crea los hilos con la característica de que:
+    	 * al iniciar un hilo, se llamará al método run del objeto constantemente;
+    	 * esto mientras el booleano util.get_run() sea verdad.
+    	 */
+    	
+        Thread agenteThread = new Thread(() -> {
+            while (util.get_run()) {
+                agente.run();
+            }
+        });
+        
+        Thread fumador1Thread = new Thread(() -> {
+            while (util.get_run()) {
+            	fumadorConTabaco.run();
+            }
+        });
+        
+        Thread fumador2Thread = new Thread(() -> {
+            while (util.get_run()) {
+            	fumadorConPapel.run();
+            }
+        });
+               
+        Thread fumador3Thread = new Thread(() -> {
+            while (util.get_run()) {
+            	fumadorConFosforo.run();
+            }
+        });
+        
+        // **** Hilos empiezan a correr ****
+        
+    	System.out.println("\nInterracciones:\n");
+    	
+    	agenteThread.start();
+    	fumador1Thread.start(); //Con tabaco
+    	fumador2Thread.start(); //Con papel
+    	fumador3Thread.start(); //Con fósforo
+    	
+    	 /**
+         * 3. try: Espera a que los hilos terminen de ejecutarse.
+         */ 
         try {
-            // El agente recibe el semáforo
-            semaforo.acquire();	
-        		
-    		/**
-    		 * 1. Genera aleatoriamente el recurso que el agente NO pondrá en la mesa.
-    		 */
-            this.recursoExcluido = randomRecursoExcluido.nextInt(3); 
-            
-            /**
-    		 * 2. switch: en cada caso, genera de forma aleatoria
-    		 * cuál de los otros dos recursos colocará de primero y de último.
-    		 */
-            switch(this.recursoExcluido) {
-            case 0: // Tabaco
-            	this.recurso1=randomrecurso1.nextInt(2)+1; // recurso1 = 1 o 2
-            	this.recurso2= (this.recurso1==1)? 2 : 1;  // recurso2 será el otro número (igual en los demás casos)
-            	break;
-            	
-            case 1: // Papel
-            	this.recurso1=randomrecurso1.nextInt(2)*2; // recurso1 = 0 o 2
-            	this.recurso2= (this.recurso1==0)? 2 : 0;
-            	break;
-            	
-            case 2: // Fósforo
-            	this.recurso1=randomrecurso1.nextInt(2); // recurso1 = 0 o 1
-            	this.recurso2= (this.recurso1==0)? 1 : 0;
-            	break;
-            } 
-            
-            /**
-    		 * 3. El agente coloca los recursos en la mesa.
-    		 */
-            mesa.colocarRecurso(0, this.recurso1);
-            System.out.print(util.get_contador() + ". El agente colocó " + this.recursos[this.recurso1] + ".");
-            Thread.sleep(300);
-            
-            mesa.colocarRecurso(1, this.recurso2);
-            System.out.println(" El agente colocó " + this.recursos[this.recurso2] + ".");
-            Thread.sleep(300);
-            
-        } // fin try
-          
-         catch (InterruptedException e) {
-        	 ExceptionMensagge(e);
-        } 
-        finally { 
-            /**
-    		 * 4. Aumenta el contador.
-    		 */
-            util.add_contador();
-        	semaforo.release();
-            // El agente libera el semáforo
-        	
-        } // fin finally
-    	} // fin if	
-        	else 
-        		if(util.get_contador()==util.get_numInteracciones()+1) {
-        	            	util.set_run(false);
-        	                /**
-        	        		 * 5. Finalmente: Si se acabaron las interacciones,
-        	            	 * vuelve falso el estado de los hilos para que dejen de correr. 
-        	        		 */       	            	
-        	            } // fin if	
-	}  // fin run
-}  // fin clase Agente
+        	agenteThread.join();
+        	fumador1Thread.join();
+        	fumador2Thread.join();
+        	fumador3Thread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        
+        /**
+         * 4. if: cuando los hilos dejan de correr manda mensaje.
+         */ 
+        if (!util.get_run())
+    		System.out.println("Interracciones finalizadas.");
+    			
+        } // fin método main
+        } // fin clase Main
