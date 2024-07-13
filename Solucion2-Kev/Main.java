@@ -94,7 +94,7 @@ public class Main {
          * 4. if: cuando los hilos dejan de correr manda mensaje.
          */ 
         if (!util.get_run())
-    		System.out.println("Interracciones finalizadas");
+    		System.out.println("Interracciones finalizadas.");
     			
         } // fin método main
         } // fin clase Main
